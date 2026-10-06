@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: architecture_backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Automatically pass the host's .env file into the container
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: architecture_frontend
+    ports:
+      - "4200:80"  # Map Nginx port 80 to host port 4200
+    depends_on:
+      - backend
+    restart: unless-stopped
