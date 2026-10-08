@@ -1,16 +1,25 @@
-import { Component, Input, signal } from '@angular/core';
+import { Component, Input, OnChanges, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MarkdownModule } from 'ngx-markdown';
+import { marked } from 'marked';
 
 @Component({
   selector: 'app-documentation-viewer',
   standalone: true,
-  imports: [CommonModule, MarkdownModule],
+  imports: [CommonModule],
   templateUrl: './documentation-viewer.component.html'
 })
-export class DocumentationViewerComponent {
+export class DocumentationViewerComponent implements OnChanges {
   // Matched exactly to the API response key per your request
   @Input() documentation_markdown: string = '';
+  
+  parsedHtml: string = '';
+
+  async ngOnChanges() {
+    if (this.documentation_markdown) {
+      // Parse markdown to HTML securely
+      this.parsedHtml = await marked.parse(this.documentation_markdown);
+    }
+  }
   
   isCopied = signal(false);
 

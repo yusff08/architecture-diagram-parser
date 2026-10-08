@@ -25,7 +25,5 @@
     </div>
 
     <!-- Strictly using property binding syntax as requested -->
-    <div class="p-8 prose prose-indigo max-w-none">
-        <markdown [data]="documentation_markdown"></markdown>
-    </div>
+    <div class="p-8 prose prose-indigo max-w-none" [innerHTML]="parsedHtml"></div>
 </div>

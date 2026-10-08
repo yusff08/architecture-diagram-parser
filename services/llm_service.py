@@ -1,7 +1,8 @@
 import os
 import json
 import logging
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,7 +10,7 @@ api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     raise ValueError("GEMINI_API_KEY is missing from the .env file.")
 
-genai.configure(api_key=api_key.strip())
+client = genai.Client(api_key=api_key.strip())
 
 SYSTEM_PROMPT = """Tu es un Architecte Logiciel Francophone de niveau Sénior.
 Ton rôle est d'analyser les textes extraits d'un diagramme de cas d'utilisation UML (UML Use Case Diagram) et de déduire l'objectif global du système.
@@ -35,17 +36,24 @@ def generate_documentation(ocr_texts: list[str]) -> dict:
             "documentation_markdown": "Aucun texte détecté dans le diagramme."
         }
 
-    # MOCK: Gemini API Quota Exhausted. Returning dummy data directly.
-    return {
-        "system_title": "Système de Gestion de Commandes (Mock)",
-        "detected_actors": ["Client", "Administrateur", "Livreur"],
-        "documentation_markdown": "# Documentation Technique (Mode Hors-Ligne)\n\n"
-                                  "Ceci est une documentation générée localement car le quota de l'API Gemini a été atteint.\n\n"
-                                  "## Acteurs Identifiés\n"
-                                  "- **Client** : Peut passer des commandes.\n"
-                                  "- **Administrateur** : Gère l'inventaire et les utilisateurs.\n"
-                                  "- **Livreur** : Confirme les expéditions.\n\n"
-                                  "## Cas d'Utilisation (Use Cases)\n"
-                                  "- Le Client interagit avec le système pour acheter un produit.\n"
-                                  "- *<< include >>* : L'authentification est requise pour passer une commande.\n"
-    }
+    try:
+        prompt = f"{SYSTEM_PROMPT}\n\nVoici les textes extraits par OCR :\n"
+        for text in ocr_texts:
+            prompt += f"- {text}\n"
+
+        response = client.models.generate_content(
+            model='gemini-3.8-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        return json.loads(response.text)
+        
+    except Exception as e:
+        logging.error(f"Error during Gemini generation: {e}")
+        return {
+            "system_title": "Erreur Génération",
+            "detected_actors": [],
+            "documentation_markdown": f"Une erreur s'est produite lors de la génération avec l'API Gemini : {str(e)}"
+        }
