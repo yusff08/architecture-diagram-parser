@@ -9,3 +9,4 @@ opencv-python-headless>=4.8.0.76
 numpy
 google-generativeai
 python-dotenv
+google-genai

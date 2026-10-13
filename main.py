@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.api import api_router
 from core.config import settings
+from core.database import init_db
+
+# Create the prompts table + default prompt on first launch
+init_db()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

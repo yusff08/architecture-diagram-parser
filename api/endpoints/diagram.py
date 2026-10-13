@@ -1,9 +1,11 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
-from typing import List
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
+from typing import List, Optional
 from schemas.diagram import DiagramDocumentationResponse
 from core.config import settings
 from services.ocr import extract_text_from_image
 from services.llm_service import generate_documentation
+from services import prompt_service
+from services.prompt_service import PromptNotFoundError
 
 router = APIRouter()
 
@@ -14,7 +16,18 @@ router = APIRouter()
     summary="Upload an architecture diagram",
     description="Uploads an image file of an architecture diagram for processing. Supports JPEG, PNG, and WebP."
 )
-async def upload_diagram(file: UploadFile = File(...)):
+async def upload_diagram(file: UploadFile = File(...), prompt_id: Optional[int] = Form(None)):
+    # 0. Resolve the prompt to use (chosen one, or the default one)
+    try:
+        prompt = prompt_service.get_prompt(prompt_id) if prompt_id is not None else prompt_service.get_default_prompt()
+    except PromptNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    if prompt is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Aucun prompt par défaut n'est configuré."
+        )
+
     # 1. Validate content type
     if not file.content_type or file.content_type not in settings.ALLOWED_IMAGE_TYPES:
         raise HTTPException(
@@ -55,7 +68,7 @@ async def upload_diagram(file: UploadFile = File(...)):
     # 4. Generate LLM documentation
     try:
         texts_only = [item["text"] for item in extracted_text]
-        doc_json = generate_documentation(texts_only)
+        doc_json = generate_documentation(texts_only, prompt["content"])
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -66,5 +79,6 @@ async def upload_diagram(file: UploadFile = File(...)):
         system_title=doc_json.get("system_title", "Titre inconnu"),
         detected_actors=doc_json.get("detected_actors", []),
         documentation_markdown=doc_json.get("documentation_markdown", ""),
-        ocr_snippets=extracted_text
+        ocr_snippets=extracted_text,
+        prompt_name=prompt["name"]
     )

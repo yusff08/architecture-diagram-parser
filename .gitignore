@@ -29,6 +29,9 @@ ENV/
 # Environment variables (CRITICAL)
 .env
 
+# Local SQLite database (Gestion des Prompts)
+*.db
+
 # =========================
 # Node & Frontend (Angular)
 # =========================

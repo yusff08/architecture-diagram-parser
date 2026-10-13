@@ -12,23 +12,16 @@ if not api_key:
 
 client = genai.Client(api_key=api_key.strip())
 
-SYSTEM_PROMPT = """Tu es un Architecte Logiciel Francophone de niveau Sénior.
-Ton rôle est d'analyser les textes extraits d'un diagramme de cas d'utilisation UML (UML Use Case Diagram) et de déduire l'objectif global du système.
-Les textes incluent les acteurs, les cas d'utilisation, et les relations telles que <<include>> et <<extend>>.
-
-À partir de cette liste de textes :
-1. Déduis le titre/le nom global du système (ex: Système de gestion de commandes).
-2. Identifie les acteurs principaux.
-3. Rédige une documentation technique en Markdown qui cartographie les acteurs et leurs cas d'utilisation, tout en expliquant les dépendances (include/extend).
-
-Ta réponse DOIT être UNIQUEMENT un objet JSON valide suivant exactement cette structure, sans aucun texte ou bloc markdown supplémentaire :
+# The editable instructions now come from the "Gestion des Prompts" module (see core/database.py).
+# This output contract is always appended and cannot be edited, so the response stays parseable.
+JSON_FORMAT_INSTRUCTIONS = """Ta réponse DOIT être UNIQUEMENT un objet JSON valide suivant exactement cette structure, sans aucun texte ou bloc markdown supplémentaire :
 {
   "system_title": "Nom du système déduit",
   "detected_actors": ["acteur1", "acteur2"],
   "documentation_markdown": "# Documentation Technique\\n..."
 }"""
 
-def generate_documentation(ocr_texts: list[str]) -> dict:
+def generate_documentation(ocr_texts: list[str], prompt_instructions: str) -> dict:
     if not ocr_texts:
         return {
             "system_title": "Inconnu",
@@ -37,7 +30,7 @@ def generate_documentation(ocr_texts: list[str]) -> dict:
         }
 
     try:
-        prompt = f"{SYSTEM_PROMPT}\n\nVoici les textes extraits par OCR :\n"
+        prompt = f"{prompt_instructions}\n\n{JSON_FORMAT_INSTRUCTIONS}\n\nVoici les textes extraits par OCR :\n"
         for text in ocr_texts:
             prompt += f"- {text}\n"
 

@@ -13,6 +13,7 @@ export interface DiagramDocumentationResponse {
   detected_actors: string[];
   documentation_markdown: string;
   ocr_snippets: ExtractedTextSnippet[];
+  prompt_name: string;
 }
 
 @Injectable({
@@ -23,9 +24,12 @@ export class DiagramService {
 
   constructor(private http: HttpClient) {}
 
-  uploadDiagram(file: File): Observable<DiagramDocumentationResponse> {
+  uploadDiagram(file: File, promptId?: number | null): Observable<DiagramDocumentationResponse> {
     const formData = new FormData();
     formData.append('file', file);
+    if (promptId != null) {
+      formData.append('prompt_id', String(promptId));
+    }
 
     return this.http.post<DiagramDocumentationResponse>(this.apiUrl, formData).pipe(
       catchError(this.handleError)
