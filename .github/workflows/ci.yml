@@ -24,7 +24,10 @@ jobs:
         # We verify that requirements can install successfully without clashes
         pip install -r requirements.txt
         
-    # (Future-proofing) Add backend PyTest step here later
+    - name: Run Backend Tests (Gestion des Prompts)
+      run: |
+        pip install -r requirements-dev.txt
+        pytest --cov=services.prompt_service --cov=services.prompt_analyzer --cov=api.endpoints.prompts --cov=core.database --cov-report=term-missing
         
   # 2. Frontend CI
   frontend-ci:

@@ -6,5 +6,7 @@ class Settings(BaseSettings):
     # Max file size 10MB
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024
     ALLOWED_IMAGE_TYPES: list[str] = ["image/jpeg", "image/png", "image/webp"]
+    # SQLite database used by the "Gestion des Prompts" module
+    DATABASE_PATH: str = "prompts.db"
 
 settings = Settings()

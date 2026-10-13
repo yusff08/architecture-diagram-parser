@@ -10,3 +10,4 @@ class DiagramDocumentationResponse(BaseModel):
     detected_actors: List[str] = Field(..., description="Liste des acteurs détectés")
     documentation_markdown: str = Field(..., description="La documentation générée en Markdown")
     ocr_snippets: List[ExtractedTextSnippet] = Field(default_factory=list, description="Les textes extraits par l'OCR")
+    prompt_name: str = Field("", description="Le nom du prompt utilisé pour la génération")

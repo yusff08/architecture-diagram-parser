@@ -1,12 +1,14 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DiagramService, DiagramDocumentationResponse } from '../../services/diagram.service';
+import { PromptService, Prompt } from '../../services/prompt.service';
 import { DocumentationViewerComponent } from '../documentation-viewer/documentation-viewer.component';
 
 @Component({
   selector: 'app-diagram-uploader',
   standalone: true,
-  imports: [CommonModule, DocumentationViewerComponent],
+  imports: [CommonModule, FormsModule, DocumentationViewerComponent],
   template: `
     <div class="max-w-3xl mx-auto mt-10 p-8 bg-white/70 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100">
         
@@ -59,8 +61,18 @@ import { DocumentationViewerComponent } from '../documentation-viewer/documentat
             </div>
         </div>
 
-        <button 
-            (click)="generateDocumentation()" 
+        <div *ngIf="prompts.length > 0" class="mt-8">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Prompt à utiliser</label>
+            <select [(ngModel)]="selectedPromptId" [disabled]="isLoading"
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option *ngFor="let prompt of prompts" [ngValue]="prompt.id">
+                    {{ prompt.name }}{{ prompt.is_default ? ' (par défaut)' : '' }}
+                </option>
+            </select>
+        </div>
+
+        <button
+            (click)="generateDocumentation()"
             [disabled]="!selectedFile || isLoading"
             class="relative w-full mt-8 py-4 px-6 rounded-2xl font-bold text-lg text-white transition-all duration-300 overflow-hidden shadow-[0_4px_14px_0_rgb(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.5)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:shadow-none bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500">
             
@@ -79,6 +91,10 @@ import { DocumentationViewerComponent } from '../documentation-viewer/documentat
 
         <div *ngIf="result" class="mt-10 p-8 bg-gray-50 rounded-2xl border border-gray-200 animate-fade-in-up shadow-inner">
             <h3 class="text-2xl font-black text-gray-800 mb-3">{{ result.system_title }}</h3>
+
+            <p *ngIf="result.prompt_name" class="mb-3 text-sm text-gray-500">
+                Prompt utilisé : <span class="font-bold text-indigo-700">{{ result.prompt_name }}</span>
+            </p>
             
             <div class="flex items-start mb-6">
                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
@@ -101,14 +117,29 @@ import { DocumentationViewerComponent } from '../documentation-viewer/documentat
     }
   `]
 })
-export class DiagramUploaderComponent {
+export class DiagramUploaderComponent implements OnInit {
   private diagramService = inject(DiagramService);
+  private promptService = inject(PromptService);
 
   isDragging = false;
   isLoading = false;
   selectedFile: File | null = null;
   errorMessage = '';
   result: DiagramDocumentationResponse | null = null;
+
+  prompts: Prompt[] = [];
+  selectedPromptId: number | null = null;
+
+  ngOnInit() {
+    // If the prompts can't be loaded, the dropdown stays hidden and the backend uses the default prompt
+    this.promptService.getAll().subscribe({
+      next: (prompts) => {
+        this.prompts = prompts;
+        this.selectedPromptId = prompts.find(p => p.is_default)?.id ?? null;
+      },
+      error: () => this.prompts = []
+    });
+  }
 
   onDragOver(event: DragEvent) {
     event.preventDefault();
@@ -159,7 +190,7 @@ export class DiagramUploaderComponent {
     this.errorMessage = '';
     this.result = null;
 
-    this.diagramService.uploadDiagram(this.selectedFile).subscribe({
+    this.diagramService.uploadDiagram(this.selectedFile, this.selectedPromptId).subscribe({
       next: (response) => {
         this.result = response;
         this.isLoading = false;

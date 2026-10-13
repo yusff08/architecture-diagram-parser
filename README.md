@@ -32,6 +32,18 @@ Le backend est une API REST développée avec **FastAPI (Python)**.
 - **Service IA (Gemini)** : `services/llm_service.py` (C'est ici qu'est configuré le modèle `gemini-3.8-flash` via le SDK `google-genai`).
 - **Moteur OCR** : Scripts gérant l'extraction de texte via OpenCV et PaddleOCR.
 
+### 📝 Module « Gestion des Prompts »
+Permet de gérer (CRUD) les prompts envoyés à Gemini au lieu d'un prompt codé en dur, et de choisir le prompt utilisé pour chaque analyse.
+- **Backend** : `api/endpoints/prompts.py` (routes `/api/prompts`), `services/prompt_service.py` (logique métier), `core/database.py` (SQLite, fichier `prompts.db` créé au premier démarrage avec un prompt par défaut).
+- **Analyse de qualité d'un prompt** : `services/prompt_analyzer.py` (Gemini + analyse locale de secours si l'API est indisponible), route `POST /api/prompts/analyze`. Spécification : `docs/specification-analyse-prompt.md`.
+- **Frontend** : onglet « Gestion des Prompts » (`frontend/src/app/components/prompt-manager/`) et liste « Prompt à utiliser » dans l'analyseur.
+- **Tests** : `tests/` (pytest, 100 % de couverture du module) et `tests/features/gestion_prompts.feature` (scénarios Gherkin).
+  ```bash
+  pip install -r requirements-dev.txt
+  pytest --cov=services.prompt_service --cov=services.prompt_analyzer --cov=api.endpoints.prompts --cov=core.database --cov-report=term-missing
+  ```
+- **Prompts utilisés pour construire le module** : `docs/prompt-gestion-prompts.md`.
+
 ---
 
 ## 🚀 Technologies Utilisées
