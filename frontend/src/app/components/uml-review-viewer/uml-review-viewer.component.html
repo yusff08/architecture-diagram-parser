@@ -1,0 +1,100 @@
+<section class="mt-8 space-y-6 rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm sm:p-8">
+  <header class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="text-sm font-bold uppercase tracking-wider text-indigo-600">Analyse critique UML</p>
+      <h2 class="mt-1 text-2xl font-black text-gray-900">Résultat de l'analyse</h2>
+    </div>
+    <div class="flex items-center gap-4 rounded-2xl px-5 py-3" [ngClass]="scoreClasses()">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-wide opacity-80">Score de qualité UML</p>
+        <p class="text-3xl font-black">{{ review.score }} <span class="text-base font-semibold">/ 100</span></p>
+      </div>
+      <div
+        class="h-3 w-24 overflow-hidden rounded-full bg-white/70"
+        role="progressbar"
+        aria-label="Score de qualité UML"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-valuenow]="review.score">
+        <div class="h-full rounded-full bg-current transition-all" [style.width.%]="review.score"></div>
+      </div>
+    </div>
+  </header>
+
+  <section class="rounded-xl border border-gray-200 bg-gray-50 p-5">
+    <h3 class="font-bold text-gray-900">Résumé</h3>
+    <p class="mt-2 leading-relaxed text-gray-700">{{ review.summary }}</p>
+  </section>
+
+  <section>
+    <h3 class="mb-3 text-lg font-bold text-gray-900">Problèmes détectés</h3>
+    <p *ngIf="review.issues.length === 0" class="rounded-xl bg-green-50 p-4 text-green-800">
+      Aucun problème n'a été détecté dans la documentation fournie.
+    </p>
+    <div *ngIf="review.issues.length > 0" class="space-y-4">
+      <article *ngFor="let issue of review.issues" class="rounded-xl border border-gray-200 p-5">
+        <div class="flex flex-wrap items-center gap-2">
+          <h4 class="text-base font-bold text-gray-900">{{ issue.title }}</h4>
+          <span class="rounded-full border px-2.5 py-1 text-xs font-bold" [ngClass]="severityClasses(issue.severity)">
+            {{ issue.severity }}
+          </span>
+          <span class="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+            {{ issue.classification === 'ERREUR_CONFIRMEE' ? 'Erreur confirmée' : 'Amélioration potentielle' }}
+          </span>
+        </div>
+        <p class="mt-3 text-gray-700">{{ issue.description }}</p>
+        <p class="mt-2 text-sm text-gray-600"><strong>Pourquoi :</strong> {{ issue.reason }}</p>
+        <p class="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-900">
+          <strong>Correction suggérée :</strong> {{ issue.suggestion }}
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h3 class="mb-3 text-lg font-bold text-gray-900">Points correctement modélisés</h3>
+    <ul *ngIf="review.strengths.length > 0; else noStrengths" class="space-y-2">
+      <li *ngFor="let strength of review.strengths" class="flex gap-2 text-gray-700">
+        <span class="font-bold text-green-600" aria-hidden="true">✓</span>
+        <span>{{ strength }}</span>
+      </li>
+    </ul>
+    <ng-template #noStrengths>
+      <p class="text-sm text-gray-600">Aucun point positif particulier n'a été relevé.</p>
+    </ng-template>
+  </section>
+
+  <section>
+    <h3 class="text-lg font-bold text-gray-900">Éléments potentiellement manquants</h3>
+    <p class="mt-1 text-sm text-gray-600">
+      Suggestions générées par l'IA : elles doivent être vérifiées avec le diagramme original et ne constituent pas des erreurs certaines.
+    </p>
+    <ul *ngIf="review.possible_missing_elements.length > 0; else noMissingElements" class="mt-3 space-y-3">
+      <li *ngFor="let missing of review.possible_missing_elements" class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h4 class="font-bold text-amber-950">{{ missing.element }}</h4>
+          <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-800">
+            Confiance {{ missing.confidence }}
+          </span>
+        </div>
+        <p class="mt-2 text-sm text-amber-900">{{ missing.reason }}</p>
+      </li>
+    </ul>
+    <ng-template #noMissingElements>
+      <p class="mt-2 text-sm text-gray-600">Aucun élément potentiellement manquant n'a été proposé.</p>
+    </ng-template>
+  </section>
+
+  <section class="border-t border-gray-200 pt-5">
+    <button
+      type="button"
+      (click)="showImprovedDocumentation = !showImprovedDocumentation"
+      class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition hover:bg-indigo-100">
+      {{ showImprovedDocumentation ? 'Masquer' : 'Afficher' }} la documentation améliorée
+    </button>
+    <app-documentation-viewer
+      *ngIf="showImprovedDocumentation"
+      [documentation_markdown]="review.improved_documentation_markdown">
+    </app-documentation-viewer>
+  </section>
+</section>
