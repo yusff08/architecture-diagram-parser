@@ -1,6 +1,6 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +10,9 @@ from services.llm_service import (
     GeminiAPIKeyMissingError,
     GeminiDocumentationGenerationError,
 )
+
+
+PROMPT_INSTRUCTIONS = "Tu es un architecte logiciel. Rédige la documentation du diagramme UML."
 
 
 @pytest.fixture
@@ -282,11 +285,13 @@ def test_existing_upload_route_keeps_its_response_contract(client, monkeypatch):
         "detected_actors",
         "documentation_markdown",
         "ocr_snippets",
+        "prompt_name",
     }
     assert response.json()["system_title"] == generated_documentation["system_title"]
     assert response.json()["ocr_snippets"] == extracted_text
     extract_mock.assert_called_once()
-    documentation_mock.assert_called_once_with(["Client"])
+    # 2nd argument = instructions of the prompt chosen in "Gestion des Prompts" (default prompt here)
+    documentation_mock.assert_called_once_with(["Client"], ANY)
 
 
 def test_documentation_generation_retries_503_and_succeeds(monkeypatch):
@@ -317,7 +322,7 @@ def test_documentation_generation_retries_503_and_succeeds(monkeypatch):
     sleep_mock = MagicMock()
     monkeypatch.setattr(llm_service.time, "sleep", sleep_mock)
 
-    result = llm_service.generate_documentation(["Client", "Passer commande"])
+    result = llm_service.generate_documentation(["Client", "Passer commande"], PROMPT_INSTRUCTIONS)
 
     assert result == generated
     assert generate_content.call_count == 3
@@ -340,7 +345,7 @@ def test_documentation_generation_stops_after_three_503_attempts(monkeypatch):
     monkeypatch.setattr(llm_service.time, "sleep", MagicMock())
 
     with pytest.raises(GeminiDocumentationGenerationError):
-        llm_service.generate_documentation(["Client", "Passer commande"])
+        llm_service.generate_documentation(["Client", "Passer commande"], PROMPT_INSTRUCTIONS)
 
     assert generate_content.call_count == 3
 
