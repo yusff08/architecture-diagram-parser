@@ -1,11 +1,62 @@
 # 🧠 AI-powered UML Architecture Analyzer
 
-Bienvenue dans le dépôt du projet **UML Architecture Analyzer**. Il s'agit d'une application full-stack intelligente capable de lire un diagramme de cas d'utilisation UML sous forme d'image, d'extraire le texte grâce à la vision par ordinateur, et de générer une documentation technique complète à l'aide de l'IA générative.
+Bienvenue dans le dépôt du projet **UML Architecture Analyzer** ! 
+
+## 🎯 Ce que fait l'application
+Cette application intelligente permet aux utilisateurs de télécharger (via glisser-déposer) des images de **diagrammes de cas d'utilisation UML**. 
+1. **Extraction (OCR)** : Elle utilise la vision par ordinateur (PaddleOCR) pour lire le texte, les acteurs et les relations présents dans l'image.
+2. **Analyse (LLM)** : Elle envoie ces données à l'intelligence artificielle Google Gemini (via le tout nouveau SDK `google-genai`).
+3. **Génération** : Elle produit automatiquement et instantanément une documentation technique structurée, précise et prête à l'emploi (au format Markdown).
+
+## 👥 Pour qui est-elle conçue ?
+Cette application est un outil de productivité destiné aux :
+- **Architectes Logiciels et Analystes Métier** : Pour transformer rapidement des schémas visuels en documentation textuelle standardisée.
+- **Ingénieurs Logiciels et Développeurs** : Pour comprendre l'architecture d'un système sans avoir à décrypter un schéma complexe.
+- **Étudiants en Informatique** : Pour vérifier que la logique de leurs diagrammes UML est claire et cohérente.
+
+---
+
+## 🧩 Architecture et Modules (Pour les contributeurs)
+
+Pour faciliter le travail en équipe et l'ajout de nouvelles fonctionnalités, voici où trouver les modules clés :
+
+### 🖥️ Frontend (Dossier `frontend/`)
+Le frontend est développé en **Angular 17** avec **Tailwind CSS**.
+- **Composant Upload (Glisser-Déposer)** : `frontend/src/app/components/diagram-uploader/` (Gère la zone de dépôt d'image et la validation).
+- **Afficheur Markdown** : `frontend/src/app/components/documentation-viewer/` (Parse et stylise la réponse de l'IA en utilisant la bibliothèque `marked`).
+- **Services API** : `frontend/src/app/services/` (Contient les appels HTTP vers le backend).
+
+### ⚙️ Backend (Dossiers `/` et `services/`)
+Le backend est une API REST développée avec **FastAPI (Python)**.
+- **Point d'Entrée (API)** : `main.py` et les fichiers dans `api/` (Définition des routes et gestion des requêtes).
+- **Service IA (Gemini)** : `services/llm_service.py` (C'est ici qu'est configuré le modèle `gemini-3.8-flash` via le SDK `google-genai`).
+- **Moteur OCR** : Scripts gérant l'extraction de texte via OpenCV et PaddleOCR.
+
+### 📝 Module « Gestion des Prompts »
+Permet de gérer (CRUD) les prompts envoyés à Gemini au lieu d'un prompt codé en dur, et de choisir le prompt utilisé pour chaque analyse.
+- **Backend** : `api/endpoints/prompts.py` (routes `/api/prompts`), `services/prompt_service.py` (logique métier), `core/database.py` (SQLite, fichier `prompts.db` créé au premier démarrage avec un prompt par défaut).
+- **Analyse de qualité d'un prompt** : `services/prompt_analyzer.py` (Gemini + analyse locale de secours si l'API est indisponible), route `POST /api/prompts/analyze`. Spécification : `docs/specification-analyse-prompt.md`.
+- **Frontend** : onglet « Gestion des Prompts » (`frontend/src/app/components/prompt-manager/`) et liste « Prompt à utiliser » dans l'analyseur.
+- **Tests** : `tests/` (pytest, 100 % de couverture du module) et `tests/features/gestion_prompts.feature` (scénarios Gherkin).
+  ```bash
+  pip install -r requirements-dev.txt
+  pytest --cov=services.prompt_service --cov=services.prompt_analyzer --cov=api.endpoints.prompts --cov=core.database --cov-report=term-missing
+  ```
+- **Prompts utilisés pour construire le module** : `docs/prompt-gestion-prompts.md`.
+
+### 🔗 Module « Exigences & Traçabilité »
+Extrait les exigences d'un cahier des charges avec Gemini, les associe aux cas d'utilisation de la documentation UML générée (sans relancer l'OCR) et calcule le taux de couverture.
+- **Backend** : `api/endpoints/traceability.py` (routes `/api/traceability`), `services/traceability_service.py` (logique métier), `services/traceability_ai.py` (Gemini : timeout, quota, validation JSON), `services/coverage_service.py` (score), `core/traceability_db.py` (tables SQLite `tr_*` dans la même base que les prompts).
+- **Frontend** : onglet « Exigences & Traçabilité » (`frontend/src/app/components/traceability/`) : tableau de bord, exigences, traçabilité, matrice (export CSV), rapport (export Markdown / PDF).
+- **Tests** : `tests/test_traceability.py` (Gemini simulé) et `frontend/src/app/**/traceability*.spec.ts`.
+- **Documentation détaillée** : `docs/gestion-exigences-tracabilite.md`.
+
+---
 
 ## 🚀 Technologies Utilisées
 - **Backend** : FastAPI (Python)
 - **OCR Engine** : PaddleOCR + OpenCV
-- **LLM** : Google Gemini 3.5 Flash
+- **LLM** : Google Gemini 3.8 Flash (SDK `google-genai`)
 - **Frontend** : Angular 17 + Tailwind CSS v3
 
 ---

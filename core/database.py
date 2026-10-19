@@ -3,26 +3,36 @@ import os
 import json
 from contextlib import contextmanager
 from typing import Generator
+from core.config import settings
 
-DB_FILE = os.getenv("DATABASE_PATH", "uml_analyzer.db")
+DEFAULT_PROMPT_NAME = "Architecte Sénior"
+DEFAULT_PROMPT_DESCRIPTION = "Prompt d'origine du projet : documentation technique complète des acteurs et cas d'utilisation."
+DEFAULT_PROMPT_CONTENT = """Tu es un Architecte Logiciel Francophone de niveau Sénior.
+Ton rôle est d'analyser les textes extraits d'un diagramme de cas d'utilisation UML (UML Use Case Diagram) et de déduire l'objectif global du système.
+Les textes incluent les acteurs, les cas d'utilisation, et les relations telles que <<include>> et <<extend>>.
 
-def get_connection(db_path: str = None) -> sqlite3.Connection:
+À partir de cette liste de textes :
+1. Déduis le titre/le nom global du système (ex: Système de gestion de commandes).
+2. Identifie les acteurs principaux.
+3. Rédige une documentation technique en Markdown qui cartographie les acteurs et leurs cas d'utilisation, tout en expliquant les dépendances (include/extend)."""
+
+DB_FILE = getattr(settings, "DATABASE_PATH", os.getenv("DATABASE_PATH", "uml_analyzer.db"))
+
+def get_raw_connection(db_path: str = None) -> sqlite3.Connection:
     """
     Retourne une connexion SQLite configurée avec les clés étrangères
     et le retour des lignes sous forme de dictionnaires (sqlite3.Row).
     """
-    path = db_path or os.getenv("DATABASE_PATH", DB_FILE)
+    path = db_path or getattr(settings, "DATABASE_PATH", os.getenv("DATABASE_PATH", DB_FILE))
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
 @contextmanager
-def get_db(db_path: str = None) -> Generator[sqlite3.Connection, None, None]:
-    """
-    Gestionnaire de contexte pour obtenir une connexion avec commit/rollback automatique.
-    """
-    conn = get_connection(db_path)
+def get_connection(db_path: str = None) -> Generator[sqlite3.Connection, None, None]:
+    """Open a connection, commit on success, rollback on error, always close."""
+    conn = get_raw_connection(db_path)
     try:
         yield conn
         conn.commit()
@@ -32,15 +42,38 @@ def get_db(db_path: str = None) -> Generator[sqlite3.Connection, None, None]:
     finally:
         conn.close()
 
+# Alias get_db pour la compatibilité avec le module Gestion des Tests
+get_db = get_connection
+
 def init_db(db_path: str = None) -> None:
     """
-    Initialise les tables du module Gestion des Tests avec contraintes CHECK strictes.
-    Idempotent et non-destructif pour les autres modules de l'application.
+    Initialise les tables de l'application :
+    - Table prompts (Gestion des Prompts)
+    - Tables test_cases et test_runs (Gestion des Tests & Robustesse)
     """
-    with get_db(db_path) as conn:
+    with get_connection(db_path) as conn:
         cursor = conn.cursor()
         
-        # Table test_cases
+        # 1. Table prompts (Module Gestion des Prompts)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prompts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT,
+                content TEXT NOT NULL,
+                is_default INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        cursor.execute("SELECT COUNT(*) FROM prompts")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute(
+                "INSERT INTO prompts (name, description, content, is_default) VALUES (?, ?, ?, 1)",
+                (DEFAULT_PROMPT_NAME, DEFAULT_PROMPT_DESCRIPTION, DEFAULT_PROMPT_CONTENT)
+            )
+
+        # 2. Table test_cases (Module Gestion des Tests)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS test_cases (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,7 +95,7 @@ def init_db(db_path: str = None) -> None:
         );
         """)
         
-        # Table test_runs
+        # 3. Table test_runs (Module Gestion des Tests)
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS test_runs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,5 +115,5 @@ def init_db(db_path: str = None) -> None:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_test_cases_type ON test_cases(test_type);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_test_runs_case_id ON test_runs(test_case_id);")
 
-# Initialisation automatique au chargement du module
+# Initialisation automatique au chargement
 init_db()
