@@ -1,0 +1,705 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+  <!-- ================= EN-TÊTE PRINCIPAL ================= -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+    <div>
+      <div class="flex items-center gap-3">
+        <span class="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+          </svg>
+        </span>
+        <div>
+          <h1 class="text-2xl font-black text-slate-800 tracking-tight">Gestion des Tests & Robustesse</h1>
+          <p class="text-sm font-medium text-slate-500">Moteur d'injection de pannes & d'évaluation de résilience du pipeline UML</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions globales & Exports -->
+    <div class="flex flex-wrap items-center gap-2.5">
+      <button 
+        (click)="exportMarkdown()" 
+        class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        Export Markdown
+      </button>
+
+      <button 
+        (click)="exportGherkin()" 
+        class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors">
+        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Export Gherkin (.feature)
+      </button>
+
+      <button 
+        (click)="runAll()" 
+        [disabled]="isRunningAll || filteredTestCases.length === 0"
+        class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl shadow-sm transition-colors">
+        <svg *ngIf="!isRunningAll" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <svg *ngIf="isRunningAll" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        {{ isRunningAll ? 'Exécution en cours...' : 'Tout exécuter (' + filteredTestCases.length + ')' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Barre de progression globale si exécution en cours -->
+  <div *ngIf="isRunningAll" class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+    <div class="bg-indigo-600 h-2 transition-all duration-300" [style.width.%]="runAllProgress || 50"></div>
+  </div>
+
+  <!-- Messages et Toasts -->
+  <div *ngIf="errorMessage" class="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <svg class="w-5 h-5 text-rose-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+      </svg>
+      <span class="text-sm font-semibold">{{ errorMessage }}</span>
+    </div>
+    <button (click)="errorMessage = null" class="text-rose-500 hover:text-rose-700 font-bold text-sm">×</button>
+  </div>
+
+  <div *ngIf="warningFallbackMessage" class="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <svg class="w-5 h-5 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+      </svg>
+      <span class="text-sm font-medium">{{ warningFallbackMessage }}</span>
+    </div>
+    <button (click)="warningFallbackMessage = null" class="text-amber-600 hover:text-amber-800 font-bold text-sm">×</button>
+  </div>
+
+  <div *ngIf="successMessage" class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+      </svg>
+      <span class="text-sm font-semibold">{{ successMessage }}</span>
+    </div>
+    <button (click)="successMessage = null" class="text-emerald-600 hover:text-emerald-800 font-bold text-sm">×</button>
+  </div>
+
+  <!-- ================= TABLEAU DE BORD KPI & ROBUSTESSE ================= -->
+  <div *ngIf="stats" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    
+    <!-- Carte 1 : Total & Répartition -->
+    <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Volume de Tests</span>
+        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Total: {{ stats.total }}</span>
+      </div>
+      <div class="flex items-baseline gap-2 mb-3">
+        <span class="text-3xl font-black text-slate-800">{{ stats.total }}</span>
+        <span class="text-xs font-medium text-slate-500">cas enregistrés</span>
+      </div>
+      <div class="flex items-center gap-2 text-xs font-semibold pt-2 border-t border-slate-50">
+        <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700">✓ {{ stats.by_status.passe }}</span>
+        <span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700">✗ {{ stats.by_status.echoue }}</span>
+        <span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">⏳ {{ stats.by_status.a_faire }}</span>
+      </div>
+    </div>
+
+    <!-- Carte 2 : Taux de réussite global -->
+    <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Taux de Réussite</span>
+        <span class="text-xs font-bold text-indigo-600">Exécutés: {{ stats.by_status.passe + stats.by_status.echoue }}</span>
+      </div>
+      <div class="flex items-baseline gap-2 mb-2">
+        <span class="text-3xl font-black text-indigo-600">{{ stats.success_rate }}%</span>
+      </div>
+      <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+        <div class="bg-indigo-600 h-2 rounded-full transition-all duration-500" [style.width.%]="stats.success_rate"></div>
+      </div>
+    </div>
+
+    <!-- Carte 3 : Score Global de Robustesse -->
+    <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Score Robustesse Global</span>
+        <span class="text-xs font-bold px-2 py-0.5 rounded-full"
+              [ngClass]="stats.global_robustness_score >= 80 ? 'bg-emerald-50 text-emerald-700' : (stats.global_robustness_score >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700')">
+          {{ stats.global_robustness_score >= 80 ? 'Optimal' : (stats.global_robustness_score >= 50 ? 'Moyen' : 'Critique') }}
+        </span>
+      </div>
+      <div class="flex items-baseline gap-2 mb-2">
+        <span class="text-3xl font-black"
+              [ngClass]="stats.global_robustness_score >= 80 ? 'text-emerald-600' : (stats.global_robustness_score >= 50 ? 'text-amber-600' : 'text-rose-600')">
+          {{ stats.global_robustness_score }}%
+        </span>
+      </div>
+      <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+        <div class="h-2 rounded-full transition-all duration-500"
+             [ngClass]="stats.global_robustness_score >= 80 ? 'bg-emerald-500' : (stats.global_robustness_score >= 50 ? 'bg-amber-500' : 'bg-rose-500')"
+             [style.width.%]="stats.global_robustness_score"></div>
+      </div>
+    </div>
+
+    <!-- Carte 4 : Robustesse par Catégories (A, B, C, D) -->
+    <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Résilience par Couche</span>
+      <div class="space-y-1.5 text-xs">
+        <div *ngFor="let catKey of ['A', 'B', 'C', 'D']" class="flex items-center justify-between">
+          <span class="font-bold text-slate-600">Cat. {{ catKey }}</span>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] text-slate-400">
+              {{ stats.category_scores[catKey].passed_tests }}/{{ stats.category_scores[catKey].total_tests }}
+            </span>
+            <span class="font-extrabold"
+                  [ngClass]="stats.category_scores[catKey].score_percentage >= 80 ? 'text-emerald-600' : 'text-amber-600'">
+              {{ stats.category_scores[catKey].score_percentage }}%
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= NAVIGATION INTERNE PAR ONGLETS ================= -->
+  <div class="flex items-center gap-2 border-b border-slate-200">
+    <button 
+      (click)="activeTab = 'tests'" 
+      [class]="activeTab === 'tests' ? 'border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-700 font-medium'"
+      class="pb-3 px-4 text-sm transition-colors flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+      Cahier des Tests ({{ testCases.length }})
+    </button>
+
+    <button 
+      (click)="activeTab = 'generator'" 
+      [class]="activeTab === 'generator' ? 'border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-700 font-medium'"
+      class="pb-3 px-4 text-sm transition-colors flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+      Générateur IA (Gemini)
+    </button>
+
+    <button 
+      (click)="activeTab = 'catalog'" 
+      [class]="activeTab === 'catalog' ? 'border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-700 font-medium'"
+      class="pb-3 px-4 text-sm transition-colors flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+      </svg>
+      Catalogue d'Injections ({{ injections.length }})
+    </button>
+  </div>
+
+  <!-- ================= CONTENU ONGLET 1 : CAHIER DES TESTS ================= -->
+  <div *ngIf="activeTab === 'tests'" class="space-y-6">
+
+    <!-- Barre de filtres et création manuelle -->
+    <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        
+        <!-- Recherche textuelle -->
+        <div class="relative min-w-[220px]">
+          <input 
+            type="text" 
+            [(ngModel)]="filterSearch"
+            placeholder="Rechercher cas, titre, acteur..."
+            class="w-full pl-9 pr-3 py-2 text-xs font-medium border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+
+        <!-- Filtre Type -->
+        <select 
+          [(ngModel)]="filterType"
+          class="px-3 py-2 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="">Tous les types</option>
+          <option value="nominal">Nominal</option>
+          <option value="limite">Limite</option>
+          <option value="erreur">Erreur</option>
+        </select>
+
+        <!-- Filtre Statut -->
+        <select 
+          [(ngModel)]="filterStatus"
+          class="px-3 py-2 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="">Tous les statuts</option>
+          <option value="a_faire">À faire</option>
+          <option value="passe">Passé</option>
+          <option value="echoue">Échoué</option>
+        </select>
+
+        <!-- Filtre Priorité -->
+        <select 
+          [(ngModel)]="filterPriority"
+          class="px-3 py-2 text-xs font-semibold border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="">Toutes priorités</option>
+          <option value="haute">Haute</option>
+          <option value="moyenne">Moyenne</option>
+          <option value="basse">Basse</option>
+        </select>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button 
+          (click)="openCreateModal()" 
+          class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Nouveau test
+        </button>
+      </div>
+    </div>
+
+    <!-- Tableau des Cas de Test -->
+    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <th class="py-3.5 px-4">ID</th>
+              <th class="py-3.5 px-4">Type</th>
+              <th class="py-3.5 px-4">Cas d'Utilisation & Titre</th>
+              <th class="py-3.5 px-4">Acteur</th>
+              <th class="py-3.5 px-4">Anomalie Injectée</th>
+              <th class="py-3.5 px-4">Statut</th>
+              <th class="py-3.5 px-4">Dernière Exécution</th>
+              <th class="py-3.5 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+            <tr *ngIf="filteredTestCases.length === 0">
+              <td colspan="8" class="text-center py-12 text-slate-400">
+                <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Aucun cas de test ne correspond aux filtres.
+              </td>
+            </tr>
+
+            <tr *ngFor="let tc of filteredTestCases" class="hover:bg-slate-50/70 transition-colors">
+              <td class="py-3 px-4 font-mono font-bold text-slate-400">#{{ tc.id }}</td>
+              
+              <!-- Badge Type -->
+              <td class="py-3 px-4">
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold"
+                      [ngClass]="{
+                        'bg-blue-50 text-blue-700': tc.test_type === 'nominal',
+                        'bg-amber-50 text-amber-700': tc.test_type === 'limite',
+                        'bg-purple-50 text-purple-700': tc.test_type === 'erreur'
+                      }">
+                  {{ tc.test_type | uppercase }}
+                </span>
+              </td>
+
+              <!-- Titre et Use Case -->
+              <td class="py-3 px-4">
+                <div class="font-bold text-slate-800">{{ tc.title }}</div>
+                <div class="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                  <span class="font-semibold text-slate-500">{{ tc.use_case }}</span>
+                  <span>•</span>
+                  <span>Priorité: {{ tc.priority }}</span>
+                </div>
+              </td>
+
+              <!-- Acteur -->
+              <td class="py-3 px-4 text-slate-600 font-medium">
+                {{ tc.actor || '—' }}
+              </td>
+
+              <!-- Injection ID -->
+              <td class="py-3 px-4">
+                <span *ngIf="tc.injection_id" class="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 font-mono text-[11px] font-bold">
+                  {{ tc.injection_id }}
+                </span>
+                <span *ngIf="!tc.injection_id" class="text-slate-400 text-[11px] italic">Aucune</span>
+              </td>
+
+              <!-- Statut avec clic pour bascule manuelle -->
+              <td class="py-3 px-4">
+                <button 
+                  (click)="toggleStatus(tc)"
+                  title="Cliquer pour changer manuellement"
+                  class="px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-transform active:scale-95"
+                  [ngClass]="{
+                    'bg-slate-100 text-slate-600': tc.status === 'a_faire',
+                    'bg-emerald-50 text-emerald-700': tc.status === 'passe',
+                    'bg-rose-50 text-rose-700': tc.status === 'echoue'
+                  }">
+                  <span class="w-1.5 h-1.5 rounded-full"
+                        [ngClass]="{
+                          'bg-slate-400': tc.status === 'a_faire',
+                          'bg-emerald-500': tc.status === 'passe',
+                          'bg-rose-500': tc.status === 'echoue'
+                        }"></span>
+                  {{ tc.status === 'a_faire' ? 'À faire' : (tc.status === 'passe' ? 'Passé' : 'Échoué') }}
+                </button>
+              </td>
+
+              <!-- Dernière exécution -->
+              <td class="py-3 px-4">
+                <div *ngIf="tc.last_run" class="text-[11px]">
+                  <span class="font-bold text-slate-700">{{ tc.last_run.duration_ms }} ms</span>
+                  <div class="text-slate-400 truncate max-w-[150px]" [title]="tc.last_run.actual_behavior">
+                    Obs: {{ tc.last_run.actual_behavior }}
+                  </div>
+                </div>
+                <span *ngIf="!tc.last_run" class="text-slate-400 text-[11px] italic">Jamais exécuté</span>
+              </td>
+
+              <!-- Actions par ligne -->
+              <td class="py-3 px-4 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  
+                  <!-- Bouton Run unitaire -->
+                  <button 
+                    (click)="runSingle(tc.id)" 
+                    [disabled]="runningTestId === tc.id"
+                    title="Exécuter ce test"
+                    class="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50">
+                    <svg *ngIf="runningTestId !== tc.id" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    </svg>
+                    <svg *ngIf="runningTestId === tc.id" class="animate-spin w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                  </button>
+
+                  <!-- Bouton Historique -->
+                  <button 
+                    (click)="viewRuns(tc)" 
+                    title="Historique des exécutions"
+                    class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+
+                  <!-- Bouton Édition -->
+                  <button 
+                    (click)="openEditModal(tc)" 
+                    title="Modifier ce test"
+                    class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+
+                  <!-- Bouton Suppression -->
+                  <button 
+                    (click)="deleteTest(tc.id)" 
+                    title="Supprimer ce test"
+                    class="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CONTENU ONGLET 2 : GÉNÉRATEUR IA ================= -->
+  <div *ngIf="activeTab === 'generator'" class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-black text-slate-800">Génération Automatique de Cas de Test (Gemini 3.8 Flash)</h2>
+        <p class="text-xs text-slate-500">Injectez la documentation textuelle d'une analyse UML pour produire automatiquement des tests nominaux, limites et erreurs avec anomalies associées.</p>
+      </div>
+      <span class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">Mode Connecté IA + Fallback</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Nom du Système / Analyse</label>
+        <input 
+          type="text" 
+          [(ngModel)]="genAnalysisName"
+          class="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+      </div>
+
+      <div class="flex items-center gap-2 pt-5">
+        <input 
+          type="checkbox" 
+          id="saveToDb"
+          [(ngModel)]="genSaveToDb"
+          class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+        <label for="saveToDb" class="text-xs font-semibold text-slate-700">Enregistrer directement les cas de test générés en base</label>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-xs font-bold text-slate-600 mb-1">Documentation ou Textes UML Extraits</label>
+      <textarea 
+        rows="8"
+        [(ngModel)]="genDocText"
+        class="w-full p-4 text-xs font-mono border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:outline-none custom-scrollbar"
+        placeholder="Collez ici les cas d'utilisation, acteurs et relations UML..."></textarea>
+    </div>
+
+    <div class="flex justify-end">
+      <button 
+        (click)="generateWithAi()" 
+        [disabled]="isLoading || !genDocText.trim()"
+        class="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl shadow-sm transition-colors">
+        <svg *ngIf="!isLoading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        <svg *ngIf="isLoading" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        {{ isLoading ? 'Génération IA en cours...' : 'Générer avec Gemini' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= CONTENU ONGLET 3 : CATALOGUE D'INJECTIONS ================= -->
+  <div *ngIf="activeTab === 'catalog'" class="space-y-6">
+    
+    <!-- Filtre par catégorie -->
+    <div class="flex flex-wrap items-center gap-2">
+      <button 
+        (click)="selectedCategoryFilter = 'ALL'"
+        [class]="selectedCategoryFilter === 'ALL' ? 'bg-slate-900 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-100'"
+        class="px-3.5 py-1.5 text-xs rounded-xl border border-slate-200 transition-colors">
+        Toutes ({{ injections.length }})
+      </button>
+      <button 
+        (click)="selectedCategoryFilter = 'A'"
+        [class]="selectedCategoryFilter === 'A' ? 'bg-indigo-600 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-100'"
+        class="px-3.5 py-1.5 text-xs rounded-xl border border-slate-200 transition-colors">
+        Cat. A : Fichiers & OCR
+      </button>
+      <button 
+        (click)="selectedCategoryFilter = 'B'"
+        [class]="selectedCategoryFilter === 'B' ? 'bg-emerald-600 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-100'"
+        class="px-3.5 py-1.5 text-xs rounded-xl border border-slate-200 transition-colors">
+        Cat. B : Données Extraites
+      </button>
+      <button 
+        (click)="selectedCategoryFilter = 'C'"
+        [class]="selectedCategoryFilter === 'C' ? 'bg-purple-600 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-100'"
+        class="px-3.5 py-1.5 text-xs rounded-xl border border-slate-200 transition-colors">
+        Cat. C : Service LLM
+      </button>
+      <button 
+        (click)="selectedCategoryFilter = 'D'"
+        [class]="selectedCategoryFilter === 'D' ? 'bg-amber-600 text-white font-bold' : 'bg-white text-slate-600 hover:bg-slate-100'"
+        class="px-3.5 py-1.5 text-xs rounded-xl border border-slate-200 transition-colors">
+        Cat. D : API REST
+      </button>
+    </div>
+
+    <!-- Grille des Injections -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div *ngFor="let inj of filteredInjections" class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between hover:border-indigo-200 transition-colors">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold"
+                  [ngClass]="{
+                    'bg-indigo-50 text-indigo-700': inj.category === 'A',
+                    'bg-emerald-50 text-emerald-700': inj.category === 'B',
+                    'bg-purple-50 text-purple-700': inj.category === 'C',
+                    'bg-amber-50 text-amber-700': inj.category === 'D'
+                  }">
+              Cat. {{ inj.category }} • {{ inj.id }}
+            </span>
+            <span class="text-[10px] font-bold text-slate-400">
+              {{ inj.expected_behavior }}
+            </span>
+          </div>
+          <h3 class="text-sm font-black text-slate-800 mb-1">{{ inj.name }}</h3>
+          <p class="text-xs text-slate-500 mb-4">{{ inj.description }}</p>
+        </div>
+
+        <div class="pt-3 border-t border-slate-50 text-[11px] font-medium text-slate-500 flex items-center justify-between">
+          <span>Comportement attendu :</span>
+          <span class="font-bold text-slate-700">{{ inj.expected_behavior }}</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= MODAL CRÉATION / ÉDITION ================= -->
+  <div *ngIf="showEditModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-base font-black text-slate-800">
+          {{ isEditing ? 'Modifier le Cas de Test #' + currentTest.id : 'Nouveau Cas de Test' }}
+        </h3>
+        <button (click)="closeEditModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">×</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Système / Analyse</label>
+          <input type="text" [(ngModel)]="currentTest.analysis_name" class="w-full px-3 py-2 text-xs border rounded-xl" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Cas d'Utilisation</label>
+          <input type="text" [(ngModel)]="currentTest.use_case" class="w-full px-3 py-2 text-xs border rounded-xl" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Acteur (optionnel)</label>
+          <input type="text" [(ngModel)]="currentTest.actor" class="w-full px-3 py-2 text-xs border rounded-xl" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Titre descriptif</label>
+          <input type="text" [(ngModel)]="currentTest.title" class="w-full px-3 py-2 text-xs border rounded-xl" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Type de test</label>
+          <select [(ngModel)]="currentTest.test_type" class="w-full px-3 py-2 text-xs border rounded-xl bg-white">
+            <option value="nominal">Nominal</option>
+            <option value="limite">Limite</option>
+            <option value="erreur">Erreur</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Priorité</label>
+          <select [(ngModel)]="currentTest.priority" class="w-full px-3 py-2 text-xs border rounded-xl bg-white">
+            <option value="haute">Haute</option>
+            <option value="moyenne">Moyenne</option>
+            <option value="basse">Basse</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">Comportement attendu</label>
+          <select [(ngModel)]="currentTest.expected_behavior" class="w-full px-3 py-2 text-xs border rounded-xl bg-white">
+            <option value="traitement_normal">traitement_normal</option>
+            <option value="mode_secours">mode_secours</option>
+            <option value="erreur_4xx_message_clair">erreur_4xx_message_clair</option>
+            <option value="rejet_propre">rejet_propre</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Anomalie injectée (Catalogue)</label>
+        <select [(ngModel)]="currentTest.injection_id" class="w-full px-3 py-2 text-xs border rounded-xl bg-white font-mono">
+          <option [ngValue]="null">Aucune anomalie (Nominal direct)</option>
+          <option *ngFor="let inj of injections" [value]="inj.id">
+            [{{ inj.category }}] {{ inj.id }} — {{ inj.name }}
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Préconditions</label>
+        <input type="text" [(ngModel)]="currentTest.preconditions" class="w-full px-3 py-2 text-xs border rounded-xl" />
+      </div>
+
+      <!-- Étapes dynamiques -->
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Étapes du test</label>
+        <div class="space-y-2 mb-2">
+          <div *ngFor="let st of currentTest.steps; let idx = index" class="flex items-center gap-2">
+            <span class="w-5 text-center font-bold text-slate-400 text-xs">{{ idx + 1 }}.</span>
+            <input type="text" [(ngModel)]="currentTest.steps![idx]" class="flex-1 px-3 py-1.5 text-xs border rounded-lg" />
+            <button (click)="removeStep(idx)" class="text-rose-500 hover:text-rose-700 font-bold px-2">✕</button>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <input 
+            type="text" 
+            [(ngModel)]="newStepInput" 
+            (keyup.enter)="addStep()"
+            placeholder="Ajouter une étape..." 
+            class="flex-1 px-3 py-1.5 text-xs border rounded-lg" />
+          <button (click)="addStep()" class="px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 rounded-lg">Ajouter</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Résultat métier attendu</label>
+        <textarea rows="2" [(ngModel)]="currentTest.expected_result" class="w-full px-3 py-2 text-xs border rounded-xl"></textarea>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+        <button (click)="closeEditModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Annuler</button>
+        <button (click)="saveTest()" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL HISTORIQUE DES RUNS ================= -->
+  <div *ngIf="showRunsModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-base font-black text-slate-800">
+            Historique des Exécutions : Test #{{ activeTestForRuns?.id }}
+          </h3>
+          <p class="text-xs text-slate-500 font-medium">{{ activeTestForRuns?.title }}</p>
+        </div>
+        <button (click)="closeRunsModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">×</button>
+      </div>
+
+      <div *ngIf="selectedTestRuns.length === 0" class="text-center py-8 text-slate-400 text-xs">
+        Aucune exécution enregistrée pour ce test.
+      </div>
+
+      <div *ngIf="selectedTestRuns.length > 0" class="divide-y divide-slate-100">
+        <div *ngFor="let run of selectedTestRuns" class="py-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                    [ngClass]="run.status === 'passe' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'">
+                {{ run.status === 'passe' ? 'PASSÉ' : 'ÉCHOUÉ' }}
+              </span>
+              <span class="text-xs font-mono font-bold text-slate-600">{{ run.duration_ms }} ms</span>
+              <span *ngIf="run.injection_id" class="px-2 py-0.5 rounded bg-rose-50 text-rose-600 font-mono text-[10px]">
+                {{ run.injection_id }}
+              </span>
+            </div>
+            <span class="text-[11px] text-slate-400">{{ run.started_at }}</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span class="text-slate-400 font-semibold">Attendu :</span>
+              <span class="font-bold text-slate-700 ml-1">{{ activeTestForRuns?.expected_behavior }}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 font-semibold">Observé :</span>
+              <span class="font-bold text-slate-700 ml-1">{{ run.actual_behavior }}</span>
+            </div>
+          </div>
+
+          <div *ngIf="run.details" class="p-3 bg-slate-50 rounded-xl text-[11px] font-mono text-slate-600 overflow-x-auto">
+            <pre>{{ run.details | json }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-3 border-t border-slate-100">
+        <button (click)="closeRunsModal()" class="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -24,7 +24,13 @@ jobs:
         # We verify that requirements can install successfully without clashes
         pip install -r requirements.txt
         
-    # (Future-proofing) Add backend PyTest step here later
+    - name: Run Backend PyTest Suite
+      env:
+        ENABLE_FAULT_INJECTION: "true"
+        PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True"
+      run: |
+        pip install pytest pytest-cov
+        python -m pytest --cov=services.test_service --cov=services.test_generator --cov=services.test_runner --cov=services.fault_injector --cov=api.endpoints.tests --cov-report=term-missing
         
   # 2. Frontend CI
   frontend-ci:
