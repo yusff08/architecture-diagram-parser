@@ -174,10 +174,11 @@ class TestGenerator:
         parsed_items: List[TestCaseCreate] = []
 
         try:
-            from services.llm_service import client
+            import services.llm_service as llm_svc
+            active_client = getattr(llm_svc, "client", None) or llm_svc.get_gemini_client()
             prompt = f"{SYSTEM_GENERATOR_PROMPT}\n\nDocumentation ou textes UML à analyser :\n{documentation_text}\n"
 
-            response = client.models.generate_content(
+            response = active_client.models.generate_content(
                 model='gemini-3.8-flash',
                 contents=prompt,
                 config=types.GenerateContentConfig(
