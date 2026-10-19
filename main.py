@@ -23,7 +23,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from api.endpoints.tests import router as tests_router
+
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(tests_router, prefix=settings.API_V1_STR)
 
 if __name__ == "__main__":
     import uvicorn

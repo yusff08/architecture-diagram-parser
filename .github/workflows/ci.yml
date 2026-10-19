@@ -21,13 +21,16 @@ jobs:
     - name: Install Backend Dependencies
       run: |
         python -m pip install --upgrade pip
-        # We verify that requirements can install successfully without clashes
         pip install -r requirements.txt
+        test -f requirements-dev.txt && pip install -r requirements-dev.txt || true
+        pip install pytest pytest-cov
         
-    - name: Run Backend Tests (Gestion des Prompts)
+    - name: Run Backend Tests
+      env:
+        ENABLE_FAULT_INJECTION: "true"
+        PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: "True"
       run: |
-        pip install -r requirements-dev.txt
-        pytest --cov=services.prompt_service --cov=services.prompt_analyzer --cov=api.endpoints.prompts --cov=core.database --cov-report=term-missing
+        pytest --cov=services.prompt_service --cov=services.prompt_analyzer --cov=api.endpoints.prompts --cov=core.database --cov=services.test_service --cov=services.test_generator --cov=services.test_runner --cov=services.fault_injector --cov=api.endpoints.tests --cov-report=term-missing
         
   # 2. Frontend CI
   frontend-ci:

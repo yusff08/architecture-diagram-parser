@@ -39,6 +39,13 @@ def get_gemini_client() -> genai.Client:
     return genai.Client(api_key=api_key.strip())
 
 
+# Global client reference for compatibility with tests and callers
+try:
+    client = get_gemini_client()
+except Exception:
+    client = None
+
+
 def generate_content_with_retry(
     *,
     model: str,
@@ -48,10 +55,12 @@ def generate_content_with_retry(
     """
     Appelle Gemini avec retry en cas d'indisponibilité HTTP 503.
     """
+    import services.llm_service as _self_mod
+    active_client = getattr(_self_mod, "client", None) or get_gemini_client()
 
     for attempt in range(GEMINI_MAX_ATTEMPTS):
         try:
-            return get_gemini_client().models.generate_content(
+            return active_client.models.generate_content(
                 model=model,
                 contents=contents,
                 config=config,
@@ -101,10 +110,23 @@ cette structure, sans aucun texte ou bloc markdown supplémentaire :
 """
 
 
+DEFAULT_ARCHITECT_PROMPT = """Tu es un Architecte Logiciel Francophone de niveau Sénior.
+Ton rôle est d'analyser les textes extraits d'un diagramme de cas d'utilisation UML (UML Use Case Diagram) et de déduire l'objectif global du système.
+Les textes incluent les acteurs, les cas d'utilisation, et les relations telles que <<include>> et <<extend>>.
+
+À partir de cette liste de textes :
+1. Déduis le titre/le nom global du système (ex: Système de gestion de commandes).
+2. Identifie les acteurs principaux.
+3. Rédige une documentation technique en Markdown qui cartographie les acteurs et leurs cas d'utilisation, tout en expliquant les dépendances (include/extend)."""
+
+
 def generate_documentation(
     ocr_texts: list[str],
-    prompt_instructions: str
+    prompt_instructions: str = None
 ) -> dict:
+
+    if not prompt_instructions or not prompt_instructions.strip():
+        prompt_instructions = DEFAULT_ARCHITECT_PROMPT
 
     if not ocr_texts:
         return {

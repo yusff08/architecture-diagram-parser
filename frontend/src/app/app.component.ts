@@ -3,14 +3,21 @@ import { CommonModule } from '@angular/common';
 import { DiagramUploaderComponent } from './components/diagram-uploader/diagram-uploader.component';
 import { PromptManagerComponent } from './components/prompt-manager/prompt-manager.component';
 import { TraceabilityComponent } from './components/traceability/traceability.component';
+import { TestManagerComponent } from './components/test-manager/test-manager.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, DiagramUploaderComponent, PromptManagerComponent, TraceabilityComponent],
+  imports: [
+    CommonModule,
+    DiagramUploaderComponent,
+    PromptManagerComponent,
+    TraceabilityComponent,
+    TestManagerComponent
+  ],
   template: `
     <main class="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
-      <nav class="inline-flex flex-wrap justify-center p-1 bg-white rounded-2xl shadow-sm border border-gray-200 print:hidden">
+      <nav class="inline-flex flex-wrap justify-center p-1 bg-white rounded-2xl shadow-sm border border-gray-200 print:hidden mb-6">
         <button (click)="activeTab = 'analyzer'"
           class="px-5 py-2 rounded-xl text-sm font-bold transition-all"
           [ngClass]="activeTab === 'analyzer' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow' : 'text-gray-600 hover:text-indigo-600'">
@@ -26,15 +33,22 @@ import { TraceabilityComponent } from './components/traceability/traceability.co
           [ngClass]="activeTab === 'traceability' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow' : 'text-gray-600 hover:text-indigo-600'">
           Exigences & Traçabilité
         </button>
+        <button (click)="activeTab = 'tests'"
+          class="px-5 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5"
+          [ngClass]="activeTab === 'tests' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow' : 'text-gray-600 hover:text-indigo-600'">
+          <span>Gestion des Tests</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        </button>
       </nav>
 
       <app-diagram-uploader *ngIf="activeTab === 'analyzer'" class="w-full"></app-diagram-uploader>
       <app-prompt-manager *ngIf="activeTab === 'prompts'" class="w-full"></app-prompt-manager>
       <app-traceability *ngIf="activeTab === 'traceability'" class="w-full"></app-traceability>
+      <app-test-manager *ngIf="activeTab === 'tests'" class="w-full"></app-test-manager>
     </main>
   `
 })
 export class AppComponent {
   title = 'frontend';
-  activeTab: 'analyzer' | 'prompts' | 'traceability' = 'analyzer';
+  activeTab: 'analyzer' | 'prompts' | 'traceability' | 'tests' = 'tests';
 }

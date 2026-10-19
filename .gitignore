@@ -29,8 +29,11 @@ ENV/
 # Environment variables (CRITICAL)
 .env
 
-# Local SQLite database (Gestion des Prompts)
+# Testing & SQLite DB
+.coverage
+.pytest_cache/
 *.db
+*.sqlite
 
 # =========================
 # Node & Frontend (Angular)
