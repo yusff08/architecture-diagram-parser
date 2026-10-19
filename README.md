@@ -44,6 +44,13 @@ Permet de gérer (CRUD) les prompts envoyés à Gemini au lieu d'un prompt codé
   ```
 - **Prompts utilisés pour construire le module** : `docs/prompt-gestion-prompts.md`.
 
+### 🔗 Module « Exigences & Traçabilité »
+Extrait les exigences d'un cahier des charges avec Gemini, les associe aux cas d'utilisation de la documentation UML générée (sans relancer l'OCR) et calcule le taux de couverture.
+- **Backend** : `api/endpoints/traceability.py` (routes `/api/traceability`), `services/traceability_service.py` (logique métier), `services/traceability_ai.py` (Gemini : timeout, quota, validation JSON), `services/coverage_service.py` (score), `core/traceability_db.py` (tables SQLite `tr_*` dans la même base que les prompts).
+- **Frontend** : onglet « Exigences & Traçabilité » (`frontend/src/app/components/traceability/`) : tableau de bord, exigences, traçabilité, matrice (export CSV), rapport (export Markdown / PDF).
+- **Tests** : `tests/test_traceability.py` (Gemini simulé) et `frontend/src/app/**/traceability*.spec.ts`.
+- **Documentation détaillée** : `docs/gestion-exigences-tracabilite.md`.
+
 ---
 
 ## 🚀 Technologies Utilisées
