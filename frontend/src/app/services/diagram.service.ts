@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, tap } from 'rxjs/operators';
+import { GeneratedDocumentationStore } from './generated-documentation.store';
 
 export interface ExtractedTextSnippet {
   text: string;
@@ -21,6 +22,7 @@ export interface DiagramDocumentationResponse {
 })
 export class DiagramService {
   private readonly apiUrl = 'http://localhost:8000/api/upload-diagram';
+  private generatedDocs = inject(GeneratedDocumentationStore);
 
   constructor(private http: HttpClient) {}
 
@@ -32,6 +34,8 @@ export class DiagramService {
     }
 
     return this.http.post<DiagramDocumentationResponse>(this.apiUrl, formData).pipe(
+      // Keeps the generated documentation for the "Exigences & Traçabilité" module
+      tap(result => this.generatedDocs.remember(result)),
       catchError(this.handleError)
     );
   }
