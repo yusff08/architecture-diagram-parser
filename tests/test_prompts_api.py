@@ -88,7 +88,7 @@ def make_upload_client(monkeypatch):
     """Loads the diagram router with fake OCR + LLM services (no PaddleOCR, no Gemini)."""
     received = {}
     ocr = types.ModuleType("services.ocr")
-    ocr.extract_text_from_image = lambda image_bytes, confidence_threshold: [{"text": "Client", "confidence": 0.9}]
+    ocr.extract_text_from_image = lambda image_bytes, confidence_threshold=0.70: [{"text": "Client", "confidence": 0.9}]
     llm = types.ModuleType("services.llm_service")
 
     def fake_generate(texts, prompt_instructions):
@@ -96,8 +96,15 @@ def make_upload_client(monkeypatch):
         return {"system_title": "Boutique", "detected_actors": ["Client"], "documentation_markdown": "# Doc"}
 
     llm.generate_documentation = fake_generate
+    # Error classes imported by api/endpoints/diagram.py (added with the UML review module)
+    llm.GeminiAPIKeyMissingError = type("GeminiAPIKeyMissingError", (RuntimeError,), {})
+    llm.GeminiDocumentationGenerationError = type("GeminiDocumentationGenerationError", (RuntimeError,), {})
     monkeypatch.setitem(sys.modules, "services.ocr", ocr)
     monkeypatch.setitem(sys.modules, "services.llm_service", llm)
+    # Restore the real module afterwards (sys.modules entry AND the package attribute),
+    # otherwise other tests patching "api.endpoints.diagram.*" would patch this fake copy
+    import api.endpoints as endpoints_pkg
+    monkeypatch.setattr(endpoints_pkg, "diagram", getattr(endpoints_pkg, "diagram", None), raising=False)
     monkeypatch.delitem(sys.modules, "api.endpoints.diagram", raising=False)
     diagram = importlib.import_module("api.endpoints.diagram")
     monkeypatch.delitem(sys.modules, "api.endpoints.diagram")
