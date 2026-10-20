@@ -81,6 +81,42 @@ export interface GenerateTestsResponse {
   message: string;
 }
 
+export interface DetectedAnomaly {
+  id: string;
+  rule: string;
+  category: 'structure' | 'coherence' | 'qualite_donnees' | 'securite';
+  severity: 'critique' | 'majeure' | 'mineure';
+  title: string;
+  description: string;
+  elements: string[];
+  suggestion: string;
+  injection_id: string | null;
+  source: 'regle' | 'ia' | 'regle+ia';
+  confidence: number;
+  confirmed_by_ai: boolean | null;
+  ai_explanation: string | null;
+}
+
+export interface DetectAnomaliesResponse {
+  analysis_name: string;
+  anomalies: DetectedAnomaly[];
+  quality_score: number;
+  by_severity: Record<string, number>;
+  by_source: Record<string, number>;
+  extracted: {
+    system_name: string | null;
+    actors: string[];
+    use_cases: string[];
+    relations: { source: string; type: 'include' | 'extend'; target: string }[];
+    associations: Record<string, string[]>;
+  };
+  ai_used: boolean;
+  fallback_used: boolean;
+  ai_summary: string | null;
+  generated_tests: TestCase[];
+  message: string;
+}
+
 export interface RunResultResponse {
   test_case_id: number;
   test_run: TestRun;
@@ -158,6 +194,22 @@ export class TestService {
     return this.http.post<GenerateTestsResponse>(`${this.baseUrl}/generate`, {
       documentation_text,
       analysis_name,
+      save
+    }).pipe(catchError(this.handleError));
+  }
+
+  detectAnomalies(
+    documentation_text: string,
+    analysis_name: string = 'Système UML',
+    use_ai: boolean = true,
+    generate_tests: boolean = false,
+    save: boolean = true
+  ): Observable<DetectAnomaliesResponse> {
+    return this.http.post<DetectAnomaliesResponse>(`${this.baseUrl}/anomalies/detect`, {
+      documentation_text,
+      analysis_name,
+      use_ai,
+      generate_tests,
       save
     }).pipe(catchError(this.handleError));
   }

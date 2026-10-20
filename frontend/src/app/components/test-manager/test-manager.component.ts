@@ -7,7 +7,8 @@ import {
   TestRun,
   TestStats,
   FaultInjectionCatalogItem,
-  RunAllSummaryResponse
+  RunAllSummaryResponse,
+  DetectAnomaliesResponse
 } from '../../services/test.service';
 
 @Component({
@@ -27,7 +28,7 @@ export class TestManagerComponent implements OnInit {
   selectedTestRuns: TestRun[] = [];
 
   // États UI
-  activeTab: 'tests' | 'generator' | 'catalog' = 'tests';
+  activeTab: 'tests' | 'generator' | 'anomalies' | 'catalog' = 'tests';
   selectedCategoryFilter: string = 'ALL';
   isLoading = false;
   isRunningAll = false;
@@ -54,6 +55,12 @@ Cas d'utilisation :
 - Recharger le bac à billets`;
   genAnalysisName = 'Distributeur DAB Bancaire';
   genSaveToDb = true;
+
+  // Détection intelligente d'anomalies (réutilise la documentation du générateur)
+  anoUseAi = true;
+  anoGenerateTests = false;
+  isDetecting = false;
+  anomalyResult: DetectAnomaliesResponse | null = null;
 
   // Modal Création / Édition
   showEditModal = false;
@@ -203,6 +210,35 @@ Cas d'utilisation :
       },
       error: (err) => {
         this.isLoading = false;
+        this.errorMessage = err.message;
+      }
+    });
+  }
+
+  // Détection d'anomalies
+  detectAnomalies(): void {
+    if (!this.genDocText.trim()) return;
+    this.isDetecting = true;
+    this.errorMessage = null;
+    this.warningFallbackMessage = null;
+
+    this.testService.detectAnomalies(this.genDocText, this.genAnalysisName, this.anoUseAi, this.anoGenerateTests, this.genSaveToDb).subscribe({
+      next: (res) => {
+        this.isDetecting = false;
+        this.anomalyResult = res;
+        if (res.fallback_used) {
+          this.warningFallbackMessage =
+            "Attention : Gemini était indisponible. Les anomalies ont été détectées par le moteur de règles local uniquement, sans validation IA.";
+        } else {
+          this.showToast(res.message);
+        }
+        if (res.generated_tests.length) {
+          this.loadTestCases();
+          this.loadStats();
+        }
+      },
+      error: (err) => {
+        this.isDetecting = false;
         this.errorMessage = err.message;
       }
     });

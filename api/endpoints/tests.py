@@ -18,6 +18,8 @@ from services.fault_injector import fault_injector, FaultInjectionDisabledError
 from services.test_service import test_service
 from services.test_generator import test_generator
 from services.test_runner import test_runner
+from schemas.anomalies import DetectAnomaliesRequest, DetectAnomaliesResponse
+from services.anomaly_detector import anomaly_detector
 
 router = APIRouter(prefix="/tests", tags=["Gestion des Tests"])
 
@@ -49,6 +51,27 @@ def generate_tests_from_documentation(payload: GenerateTestsRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Échec de la génération des tests : {str(e)}"
+        )
+
+@router.post(
+    "/anomalies/detect",
+    response_model=DetectAnomaliesResponse,
+    summary="Détection intelligente d'anomalies UML",
+    description="Détecte les anomalies d'un modèle UML (orphelins, cycles, doublons, bruit OCR, injection de prompt...) par un moteur de règles, valide et enrichit le résultat avec Gemini, et peut générer les cas de test de robustesse associés. Bascule sur les règles seules si Gemini est indisponible."
+)
+def detect_anomalies(payload: DetectAnomaliesRequest):
+    try:
+        return anomaly_detector.detect(
+            doc_text=payload.documentation_text,
+            analysis_name=payload.analysis_name or "Système UML",
+            use_ai=payload.use_ai,
+            generate_tests=payload.generate_tests,
+            save_to_db=payload.save
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Échec de la détection d'anomalies : {str(e)}"
         )
 
 @router.get(

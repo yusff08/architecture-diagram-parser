@@ -157,7 +157,11 @@ Le module **Gestion des Tests** est un framework complet d'assurance qualité et
    - **Catégorie D (API REST)** : Payloads invalides, identifiants inexistants (404) et requêtes simultanées concurrentes.
 4. **Runner Séquentiel Isolé (`services/test_runner.py`)** : Exécute les tests de façon isolée (scope contextuel thread-safe), compare le comportement observé au comportement attendu (`expected_behavior`), enregistre l'historique détaillé (`duration_ms`, HTTP code, trace) et met à jour le statut du test.
 5. **Tableau de Bord & Scores de Robustesse** : Suivi des statuts (À faire, Passé, Échoué), taux de réussite et scores de robustesse spécifiques par catégorie (Score A, B, C, D) et global.
-6. **Exports Multi-Formats** : Export en un clic du cahier de recette complet au format **Markdown** (.md) et en spécifications BDD **Gherkin** (.feature en français).
+6. **Détection Intelligente d'Anomalies (`services/anomaly_detector.py`)** : Analyse hybride d'une documentation UML en deux étages :
+   - **Moteur de règles local** (toujours disponible) : extraction des acteurs, cas d'utilisation et relations `<<include>>`/`<<extend>>`, puis détection des acteurs et cas orphelins, relations circulaires (parcours de graphe), doublons exacts et approchés (similarité ≥ 85 %), bruit OCR, caractères Unicode invisibles/bidirectionnels, textes extrêmes, modèle vide et tentatives d'injection de prompt.
+   - **Validation par Gemini** : chaque anomalie reçoit un verdict (confirmée ou faux positif probable) avec une explication et un indice de confiance ; l'IA ajoute les anomalies sémantiques invisibles aux règles (noms ambigus, responsabilités incohérentes, mauvais usage de `<<extend>>`...). En cas d'indisponibilité, le résultat des règles est renvoyé seul (`fallback_used: true`).
+   - **Score de qualité** sur 100, pondéré par la gravité et la confiance, et **génération automatique des cas de test de robustesse** : chaque anomalie est reliée à une injection du catalogue (`B_CIRCULAR_RELATIONS`, `B_ACTOR_WITHOUT_USECASE`...).
+7. **Exports Multi-Formats** : Export en un clic du cahier de recette complet au format **Markdown** (.md) et en spécifications BDD **Gherkin** (.feature en français).
 
 ### 🔒 Sécurité & Isolation de l'Injection
 - **Désactivée par défaut en production** : L'injection n'est active que si `ENABLE_FAULT_INJECTION=true` est explicitement configuré dans le fichier `.env`. Si désactivée, les routes d'exécution renvoient immédiatement un code **HTTP 403 Forbidden** avec un message explicite.
@@ -166,6 +170,7 @@ Le module **Gestion des Tests** est un framework complet d'assurance qualité et
 ### 🌐 Endpoints de l'API (`/api/tests`)
 - `GET  /api/tests/injections` : Catalogue complet des anomalies et comportements attendus.
 - `POST /api/tests/generate` : Génération IA des cas de test (`save=true` pour persister).
+- `POST /api/tests/anomalies/detect` : Détection intelligente d'anomalies (`use_ai`, `generate_tests`, `save`).
 - `GET  /api/tests` : Liste filtrable (`use_case`, `test_type`, `status`, `priority`, `injection_id`).
 - `POST /api/tests` : Création manuelle d'un cas de test.
 - `GET  /api/tests/{id}` : Consultation détaillée d'un test.
